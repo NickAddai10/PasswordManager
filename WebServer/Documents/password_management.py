@@ -1,36 +1,13 @@
 import mysql.connector
+import user_registration
 from mysql.connector import Error
 import uuid
-
-# Function to create the Passwords table
-def create_passwords_table(connection):
-    try:
-        cursor = connection.cursor()
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS Passwords (
-            PasswordID INT AUTO_INCREMENT PRIMARY KEY,
-            UserID VARCHAR(36),
-            WebsiteServiceName VARCHAR(255) NOT NULL,
-            UsernameEmail VARCHAR(255),
-            EncryptedPassword TEXT NOT NULL,
-            URL VARCHAR(255),
-            Notes TEXT,
-            FOREIGN KEY (UserID) REFERENCES Users(UserID)
-        )
-        """
-        cursor.execute(create_table_query)
-        connection.commit()
-        cursor.close()
-        print("Passwords table created successfully")
-    except Error as e:
-        print(f"Error creating Passwords table: {e}")
-
 
 # Function to establish a connection to the MySQL database
 def create_connection():
     try:
         connection = mysql.connector.connect(
-            host='B-MacBook-Pro.local',
+            host='127.0.0.1',
             database='password_manager',
             user='Nick',
             password='Season8TBD!',
@@ -42,98 +19,94 @@ def create_connection():
         print(f"Error connecting to MySQL database: {e}")
         return None
 
-
-# Function to create the Users table
-def create_users_table(connection):
+# Function to create the Passwords table
+def create_passwords_table(connection):
     try:
         cursor = connection.cursor()
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS Users (
-            UserID VARCHAR(36) PRIMARY KEY,
-            Username VARCHAR(50) UNIQUE NOT NULL,
-            Password VARCHAR(255) NOT NULL,
-            BcryptHash VARCHAR(255) NOT NULL DEFAULT ''
-        )
-        """
-        cursor.execute(create_table_query)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Passwords (
+                PasswordID INT AUTO_INCREMENT PRIMARY KEY,
+                UserID VARCHAR(36),
+                WebsiteServiceName VARCHAR(255) NOT NULL,
+                UsernameEmail VARCHAR(255),
+                EncryptedPassword TEXT NOT NULL,
+                URL VARCHAR(255),
+                Notes TEXT,
+                CONSTRAINT FK_UserPass FOREIGN KEY (UserID) REFERENCES Users(UserID)
+            )
+        """)
         connection.commit()
         cursor.close()
-        print("Users table created successfully")
+        print("Passwords table created successfully")
     except Error as e:
-        print(f"Error creating Users table: {e}")
+        print(f"Error creating Passwords table: {e}")
 
-# Function to store username, password, and bcrypt hash in the database
-def store_login(connection, username, hashed_password, bcrypt_hash=None):
+def update_password_table(connection, user_id, username):
     try:
         cursor = connection.cursor()
-        user_id = generate_unique_user_id()
-        insert_query = "INSERT INTO Users (UserID, Username, Password, BcryptHash) VALUES (%s, %s, %s, %s)"
-
-        # Ensure bcrypt_hash is not None
-        if bcrypt_hash is None:
-            bcrypt_hash = ''
-        cursor.execute(insert_query, (user_id, username, hashed_password, bcrypt_hash))
+        cursor.execute("UPDATE Passwords SET UserID = %s WHERE UsernameEmail = %s AND UserID IS NULL",
+                       (user_id, username))
         connection.commit()
         cursor.close()
-        print("Username, password, and bcrypt hash stored successfully in the database")
-        return user_id
+        print("Password table updated successfully")
     except Error as e:
-        print(f"Error storing username, password, and bcrypt hash: {e}")
-
+        print(f"Error updating password table: {e}")
 
 # Function to store a password for a user
 def store_password(connection, user_id, website_service_name, username_email, encrypted_password, url=None, notes=None):
     try:
         cursor = connection.cursor()
-        insert_query = "INSERT INTO Passwords (UserID, WebsiteServiceName, UsernameEmail, EncryptedPassword, URL, Notes) VALUES (%s, %s, %s, %s, %s, %s)"
+        # Store the password in the Passwords table using the retrieved UserID
+        insert_query = """
+                        INSERT INTO Passwords (UserID, WebsiteServiceName, UsernameEmail, EncryptedPassword, URL, Notes) 
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """
         cursor.execute(insert_query, (user_id, website_service_name, username_email, encrypted_password, url, notes))
         connection.commit()
-        cursor.close()
         print("Password stored successfully")
+        cursor.close()
     except Error as e:
         print(f"Error storing password: {e}")
 
 
-# Function to generate a unique user ID
-def generate_unique_user_id():
-    return str(uuid.uuid4())
+def store_password_menu(connection, username,):
+    try:
+        cursor = connection.cursor()
 
+        # Debugging: Print the username to verify
+        print("Username to search:", username)
 
-# Function to register a new user (modified to store passwords)
-def register_login(connection):
-    # Prompt the user for a username and password
-    ...
+        # Check if the username exists in the Users table
+        cursor.execute("SELECT UserID FROM Users WHERE Username = %s", (username,))
+        result = cursor.fetchone()
+        print("Result:", result)  # Add this line for debugging
 
-    # Store the username, hashed password, and hashing method in the Users table
-    user_id = store_login(connection, username, hashed_password, choice)
+        if result:
+            user_id = result[0]  # Retrieve the UserID if the Username exists
+            website_service_name = input("Enter Website/Service Name: ").strip()
+            username_email = input("Enter Username/Email: ").strip()
+            encrypted_password = input("Enter Encrypted Password: ").strip()
+            url = input("Enter URL (optional, press Enter to skip): ").strip()
+            notes = input("Enter Notes (optional, press Enter to skip): ").strip()
+            store_password(connection, user_id, website_service_name, username_email, encrypted_password, url, notes)
 
-    print(f"Registration successful! Your UserID is: {user_id}")
+            if website_service_name and username_email and encrypted_password:
+                # Store the password in the Passwords table using the retrieved UserID
+                insert_query = """
+                    INSERT INTO Passwords (UserID, WebsiteServiceName, UsernameEmail, EncryptedPassword, URL, Notes) 
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_query, (user_id, website_service_name, username_email, encrypted_password, url, notes))
+                connection.commit()
+                print("Password stored successfully")
+            else:
+                print("Error storing password: Required fields are empty")
+        else:
+            print("Error storing password: Username not found")
 
-    # Prompt the user to store passwords
-    while True:
-        website_service_name = input("Enter Website/Service Name: ")
-        username_email = input("Enter Username/Email: ")
-        encrypted_password = input("Enter Encrypted Password: ")
-        url = input("Enter URL (optional): ")
-        notes = input("Enter Notes (optional): ")
-
-        # Store the password in the Passwords table
-        store_password(connection, user_id, website_service_name, username_email, encrypted_password, url, notes)
-
-        add_another = input("Do you want to add another password? (yes/no): ")
-        if add_another.lower() != 'yes':
-            break
-
-
-# Function to interactively store a new password
-def store_password_menu(connection, user_id):
-    website_service_name = input("Enter Website/Service Name: ")
-    username_email = input("Enter Username/Email: ")
-    encrypted_password = input("Enter Encrypted Password: ")
-    url = input("Enter URL (optional): ")
-    notes = input("Enter Notes (optional): ")
-    store_password(connection, user_id, website_service_name, username_email, encrypted_password, url, notes)
-    print("Password stored successfully")
+        cursor.close()
+    except Error as e:
+        print(f"Error storing password: {e}")
 
 
 # Function to retrieve passwords for a user
@@ -149,14 +122,13 @@ def retrieve_passwords(connection, user_id):
         print(f"Error fetching passwords: {e}")
         return []
 
-
 # Function to display saved passwords for a user
 def display_saved_passwords(connection, user_id):
     passwords = retrieve_passwords(connection, user_id)
     if passwords:
         print("Saved Passwords:")
         for password in passwords:
-            print(f"Website/Service: {password[2]}")
+            print(f"\nWebsite/Service: {password[2]}")
             print(f"Username/Email: {password[3]}")
             print(f"Encrypted Password: {password[4]}")
             print(f"URL: {password[5]}")
@@ -164,7 +136,6 @@ def display_saved_passwords(connection, user_id):
             print()
     else:
         print("No passwords saved for this user")
-
 
 # Function to update a password for a given ID
 def update_password(connection, password_id, new_password):
@@ -178,6 +149,13 @@ def update_password(connection, password_id, new_password):
     except Error as e:
         print(f"Error updating password: {e}")
 
+def update_password_menu(connection):
+    try:
+        password_id = input("Enter the ID of the password you want to update: ")
+        new_password = input("Enter the new password: ")
+        update_password(connection, password_id, new_password)
+    except Error as e:
+        print(f"Error updating password: {e}")
 
 # Function to delete a password for a given ID
 def delete_password(connection, password_id):
@@ -191,15 +169,30 @@ def delete_password(connection, password_id):
     except Error as e:
         print(f"Error deleting password: {e}")
 
+def delete_password_menu(connection,):
+    try:
+        password_id = input("Enter the ID of the password you want to delete: ")
+        delete_password(connection, password_id)
+    except Error as e:
+        print(f"Error deleting password: {e}")
+
 # Entry point of the script
 if __name__ == "__main__":
     # Attempt to establish a connection to the database
     connection = create_connection()
     if connection:
-        # If connection is successful, create the Passwords table
-        create_passwords_table(connection)
-        # Close the database connection
-        connection.close()
+        # Register the first user
+        user_id, username = user_registration.register_login(connection)
+        print("Registered User:", user_id, username)  # Add this line for debugging
+        if user_id and username:
+            # If connection is successful, create the Passwords table
+            create_passwords_table(connection)
+            # Update the Passwords table with the UserID of the first user
+            update_password_table(connection, user_id, username)
+            # Call the function to store passwords
+            store_password_menu(connection, username)
+            # Close the database connection
+            connection.close()
     else:
         # If connection fails, exit the program or take appropriate action
         print("Exiting program due to connection error")

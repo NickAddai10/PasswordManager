@@ -9,7 +9,7 @@ import uuid
 def create_connection():
     try:
         connection = mysql.connector.connect(
-            host='B-MacBook-Pro.local',
+            host='127.0.0.1',
             database='password_manager',
             user='Nick',
             password='Season8TBD!',
@@ -59,7 +59,7 @@ def store_login(connection, user_id, username, hashed_password, bcrypt_hash=None
 
 # Function to prompt user for choice of password hashing method
 def prompt_hashing_method(previous_choice=None):
-    print("Choose The Hashing Method:")
+    print("Choose Your Hashing Methods:")
     print("1. SHA-256")
     print("2. Bcrypt")
     print("3. Argon2")
@@ -147,6 +147,10 @@ def register_login(connection):
 
     # Print the final hashed password
     print("Final Hashed Password:", hashed_password2)
+    print("UserID:", user_id)
+
+    # Return the username along with the user_id
+    return user_id, username
 
 # Function to authenticate a user
 def login(connection):
@@ -183,7 +187,6 @@ def login(connection):
         return False
 
 
-# Main menu function
 def main_menu():
     connection = create_connection()
     if connection:
@@ -195,7 +198,8 @@ def main_menu():
             print("3. Exit")
             choice = input("Enter your choice: ")
             if choice == "1":
-                register_login(connection)
+                user_id, username = register_login(connection)
+                print("Registered User:", user_id, username)  # Add this line for debugging
             elif choice == "2":
                 if login(connection):
                     print("Exiting...")
