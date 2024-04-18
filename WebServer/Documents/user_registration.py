@@ -149,7 +149,7 @@ def register_login(connection):
     print("Final Hashed Password:", hashed_password2)
     print("UserID:", user_id)
 
-    # Return the username along with the user_id
+    # Return the username along with the user_id1
     return user_id, username
 
 # Function to authenticate a user
@@ -178,7 +178,7 @@ def login(connection):
                 if password == stored_password:
                     print("\nLogin successful!")
                     return True
-                    return user_id  # Return user_id after successful login
+                return user_id  # Return user_id after successful login
         print("Incorrect username or password.")
         return False
 

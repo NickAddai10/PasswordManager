@@ -2,6 +2,7 @@ import mysql.connector
 import user_registration
 from mysql.connector import Error
 import uuid
+import menu
 
 # Function to establish a connection to the MySQL database
 def create_connection():
@@ -41,11 +42,11 @@ def create_passwords_table(connection):
     except Error as e:
         print(f"Error creating Passwords table: {e}")
 
-def update_password_table(connection, user_id, username):
+def update_password_table(connection, user_id):
     try:
         cursor = connection.cursor()
         cursor.execute("UPDATE Passwords SET UserID = %s WHERE UsernameEmail = %s AND UserID IS NULL",
-                       (user_id, username))
+                       (user_id, user_id))
         connection.commit()
         cursor.close()
         print("Password table updated successfully")
@@ -69,7 +70,8 @@ def store_password(connection, user_id, website_service_name, username_email, en
         print(f"Error storing password: {e}")
 
 
-def store_password_menu(connection, username,):
+def store_password_menu(connection, username):
+
     try:
         cursor = connection.cursor()
 
@@ -98,7 +100,7 @@ def store_password_menu(connection, username,):
                 """
                 cursor.execute(insert_query, (user_id, website_service_name, username_email, encrypted_password, url, notes))
                 connection.commit()
-                print("Password stored successfully")
+
             else:
                 print("Error storing password: Required fields are empty")
         else:
@@ -181,18 +183,46 @@ if __name__ == "__main__":
     # Attempt to establish a connection to the database
     connection = create_connection()
     if connection:
-        # Register the first user
-        user_id, username = user_registration.register_login(connection)
-        print("Registered User:", user_id, username)  # Add this line for debugging
-        if user_id and username:
-            # If connection is successful, create the Passwords table
-            create_passwords_table(connection)
-            # Update the Passwords table with the UserID of the first user
-            update_password_table(connection, user_id, username)
-            # Call the function to store passwords
-            store_password_menu(connection, username)
+        try:
+            while True:
+                print("\nMenu:")
+                print("1. Register")
+                print("2. Login")
+                print("3. Exit")
+                choice = input("Enter your choice: ")
+
+                if choice == "1":
+                    # Register the user
+                    user_id, username = user_registration.register_login(connection)
+                    print("Registered User:", user_id, username)  # Add this line for debugging
+                    if user_id and username:
+                        # If registration is successful, create the necessary tables
+                        create_passwords_table(connection)
+                        # Update the Passwords table with the UserID of the first user
+                        update_password_table(connection, user_id)
+                        # Store a new password
+                        store_password_menu(connection, user_id)
+                        # After saving a new password, go back to password management menu
+                        menu.password_management_menu(connection, user_id)
+
+                elif choice == "2":
+                    # Login the user
+                    user_id = user_registration.login(connection)
+                    if user_id:
+                        # If login is successful, proceed to password management menu
+                        menu.password_management_menu(connection, user_id)
+
+                elif choice == "3":
+                    print("Exiting...")
+                    break  # Exit the loop and the program
+
+                else:
+                    print("Invalid choice. Please try again.")
+
+        finally:
             # Close the database connection
             connection.close()
+            print("Database connection closed")
     else:
         # If connection fails, exit the program or take appropriate action
         print("Exiting program due to connection error")
