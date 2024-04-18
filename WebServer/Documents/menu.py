@@ -1,5 +1,4 @@
 import mysql.connector
-import username
 from mysql.connector import Error
 import user_registration
 import password_management

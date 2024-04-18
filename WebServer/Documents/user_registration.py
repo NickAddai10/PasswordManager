@@ -149,7 +149,7 @@ def register_login(connection):
     print("Final Hashed Password:", hashed_password2)
     print("UserID:", user_id)
 
-    # Return the username along with the user_id1
+    # Return the username along with the user_id
     return user_id, username
 
 # Function to authenticate a user
@@ -199,7 +199,7 @@ def main_menu():
             choice = input("Enter your choice: ")
             if choice == "1":
                 user_id, username = register_login(connection)
-                print("Registered User:", user_id, username)  # Add this line for debugging
+                print("Registered User:", user_id, username)  # Added this line for debugging
             elif choice == "2":
                 if login(connection):
                     print("Exiting...")
